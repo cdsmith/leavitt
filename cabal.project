@@ -1,0 +1,3 @@
+packages: leavitt.cabal
+
+test-show-details: direct

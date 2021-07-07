@@ -1,0 +1,36 @@
+cabal-version:      2.4
+name:               leavitt
+version:            0.1.0.0
+
+author:             Chris Smith
+maintainer:         cdsmith@gmail.com
+
+library
+    exposed-modules:  FranksNormalForm,
+                      Graph,
+                      History,
+                      Iso,
+                      Leavitt,
+                      Reduction,
+                      Render,
+                      Trace
+    build-depends:    base ^>=4.14.1.0,
+                      containers,
+                      linear,
+                      vector
+    hs-source-dirs:   src
+    default-language: Haskell2010
+    ghc-options:      -Wall
+
+test-suite tests
+    type:             exitcode-stdio-1.0
+    main-is:          Main.hs
+    build-depends:    leavitt,
+                      base,
+                      containers,
+                      deepseq,
+                      hspec,
+                      QuickCheck
+    hs-source-dirs:   test
+    default-language: Haskell2010
+    ghc-options:      -Wall
