@@ -182,7 +182,7 @@ freshEdges g = case Set.lookupMax (edges g) of
   Just v -> tail (iterate succ v)
   Nothing -> iterate succ (toEnum 0)
 
-newtype Path = Path (Either Vertex [Edge]) deriving (Eq, Ord)
+newtype Path = Path (Either Vertex [Edge]) deriving (Eq, Ord, Show)
 
 instance Render Path where
   render (Path (Left v)) = render v

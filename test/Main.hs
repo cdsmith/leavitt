@@ -77,7 +77,7 @@ main = hspec $ do
               [0, 0, 0, 0, 0, 0, 0, 0, 3, 3]
             ]
 
-  describe "Leavitt" $
+  describe "Leavitt" $ do
     modifyMaxSuccess (const 10) $
       it "satisfies CK1" $
         property $
@@ -93,3 +93,12 @@ main = hspec $ do
                     | e <- Set.toList (edges g),
                       f <- e : Set.toList (Set.take 2 (edges g))
                   ]
+    it "satisfies CK2" $
+      example $ do
+        let g =
+              insEdge (Vertex 0) (Edge 0) (Vertex 0) $
+                insEdge (Vertex 0) (Edge 1) (Vertex 0) empty
+        edge g (Edge 0) * starEdge g (Edge 0)
+          + edge g (Edge 1) * starEdge g (Edge 1)
+          `shouldBe` (vertex g (Vertex 0) :: LPA Int)
+        return ()

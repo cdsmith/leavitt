@@ -24,6 +24,7 @@ class StructuredAlgebra structure k a | a -> k where
   equal :: structure -> a -> a -> Bool
 
 data StructuredTerm structure k a = Pure k | WithStructure structure a
+  deriving (Show)
 
 interpret ::
   StructuredAlgebra structure k a =>
@@ -72,7 +73,7 @@ instance (Render k, Render a) => Render (StructuredTerm structure k a) where
   render (WithStructure _ a) = render a
 
 newtype Leavitt k = Leavitt {leavittCoeffs :: Map (Path, Path) k}
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Show)
 
 instance (Eq k, Num k, Render k) => Render (Leavitt k) where
   render (Leavitt m) =
