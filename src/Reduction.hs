@@ -9,7 +9,11 @@ module Reduction where
 import Data.Coerce (coerce)
 import Data.Functor.Identity (Identity (Identity))
 import Data.List (foldl')
+import Data.Map (Map)
+import qualified Data.Map as Map
 import qualified Data.Sequence as Seq
+import Data.Set (Set)
+import qualified Data.Set as Set
 import Data.Vector (Vector)
 import qualified Data.Vector as Vector
 import GHC.Stack (HasCallStack)
@@ -266,3 +270,34 @@ instance FlowEquiv (Matrix Integer) where
         ]
         | i <- [0 .. size m - 1]
       ]
+
+isIrreducible :: Reducible m => m -> Bool
+isIrreducible m =
+  and
+    [ j `Set.member` (r Map.! i)
+      | i <- [0 .. size m - 1],
+        j <- [0 .. size m - 1]
+    ]
+  where
+    r = reachable m
+
+reachable :: Reducible m => m -> Map Natural (Set Natural)
+reachable m =
+  Map.fromList
+    [ (i, reachableFrom (Set.singleton i) i)
+      | i <- [0 .. size m - 1]
+    ]
+  where
+    reachableFrom visited i =
+      foldl'
+        (\v j -> reachableFrom (Set.insert j v) j)
+        visited
+        [ j
+          | j <- [0 .. size m - 1],
+            m ! (i, j) > 0,
+            not (j `Set.member` visited)
+        ]
+
+isNonTrivial :: Reducible m => m -> Bool
+isNonTrivial m =
+  any (> 1) [sum [m ! (i, j) | j <- [0 .. size m - 1]] | i <- [0 .. size m - 1]]
