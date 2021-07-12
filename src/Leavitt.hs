@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -24,7 +25,7 @@ class StructuredAlgebra structure k a | a -> k where
   equal :: structure -> a -> a -> Bool
 
 data StructuredTerm structure k a = Pure k | WithStructure structure a
-  deriving (Show)
+  deriving (Show, Functor)
 
 interpret ::
   StructuredAlgebra structure k a =>
@@ -185,3 +186,26 @@ vertex g v =
   WithStructure g $
     Leavitt
       (Map.singleton (Path (Left v), Path (Left v)) 1)
+
+star :: LPA k -> LPA k
+star = fmap (\(Leavitt m) -> Leavitt (Map.mapKeys swap m))
+  where
+    swap (a, b) = (b, a)
+
+starMap ::
+  (Num k, Eq k) =>
+  Graph ->
+  (Vertex -> LPA k) ->
+  (Edge -> LPA k) ->
+  LPA k ->
+  LPA k
+starMap g vertMap edgeMap x = go (interpret g x)
+  where
+    go (Leavitt m) =
+      sum [fromTerm alpha beta k | ((alpha, beta), k) <- Map.toAscList m]
+
+    fromTerm alpha beta k = Pure k * fromPath alpha * star (fromPath beta)
+
+    fromPath (Path (Left v)) = vertMap v
+    fromPath (Path (Right (e : es))) = edgeMap e * fromPath (Path (Right es))
+    fromPath (Path (Right [])) = Pure 1
