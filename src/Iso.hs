@@ -1,106 +1,160 @@
 module Iso where
 
+import Data.Foldable (foldl')
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Graph
 import Leavitt
 import Reduction (FlowEquiv (..), Reducible (..))
 
--- Represents a choice of corner p L(E) p of a Leavitt path algebra, where p
--- is a projection of the graph.
-data Corner = Corner
-  { cornerGraph :: Graph,
-    cornerProjection :: LPA Int
-  }
-
--- During reduction, keeps track of the range graph F, and a star-isomorphism
--- from L(F) to p L(E) p, for some projection p which can change as graph moves
--- are added.
---
--- isoMap gives a map to the *inner* element, so if isoMap x = y, then the true
--- isomorphism maps x to p y p.
---
--- Because this is a star isomorphism, one only needs to know where each vertex
--- and edge maps.
-data IsoToCorner = IsoToCorner
+-- During reduction, keeps track of a source graph E, projection p in L(E),
+-- range graph F, and a star-isomorphism h from p L(E) p to h(p) L(F) h(p).
+data CornerIso = CornerIso
   { isoSource :: Graph,
-    isoRange :: Corner,
-    isoMap :: LPA Int -> LPA Int
+    isoProjection :: LPA Int,
+    isoRange :: Graph,
+    isoMap :: LPA Int -> LPA Int,
+    isoInverseMap :: LPA Int -> LPA Int
   }
 
-identityIsoToCorner :: Graph -> IsoToCorner
-identityIsoToCorner g =
-  IsoToCorner
+-- A CornerIso representing the identity map.
+identityIso :: Graph -> CornerIso
+identityIso g =
+  CornerIso
     { isoSource = g,
-      isoRange = Corner g (Pure 1),
-      isoMap = id
+      isoProjection = Pure 1,
+      isoRange = g,
+      isoMap = id,
+      isoInverseMap = id
     }
 
--- Composes an isomorphism from L(F) to p L(E) p, with an isomorphism from
--- L(G) -> q L(F) q, to get an isomorphism from L(G) -> p q' L(E) p q', where
--- q' is the image of q under the first isomorphism.
-composeIsoToCorner :: IsoToCorner -> IsoToCorner -> IsoToCorner
-composeIsoToCorner iso1 iso2 =
-  IsoToCorner
-    { isoSource = isoSource iso2,
-      isoRange = let Corner g1 p1 = isoRange iso1
-                     Corner _ p2 = isoRange iso2
-                 in Corner g1 (p1 * isoMap iso1 p2),
-      isoMap = isoMap iso1 . isoMap iso2
+-- Composes an isomorphism f from p L(E) p to f(p) L(E) f(p), and an isomorphism
+-- g from q L(F) q -> g(q) L(G) g(q), to get an isomorphism (g . f) from
+-- p L(E) p to g(q * f(p)) L(G) g(q * f(p)).
+composeIso :: CornerIso -> CornerIso -> CornerIso
+composeIso iso1 iso2 =
+  CornerIso
+    { isoSource = isoSource iso1,
+      isoProjection = isoProjection iso1,
+      isoRange = isoRange iso2,
+      isoMap = isoMap iso2 . isoMap iso1,
+      isoInverseMap = isoInverseMap iso1 . isoInverseMap iso2
     }
 
-instance Reducible IsoToCorner where
-  size iso = fromIntegral $ Set.size (vertices (isoSource iso))
+instance Reducible CornerIso where
+  size iso = fromIntegral $ Set.size (vertices (isoRange iso))
 
   iso ! (i, j) =
     fromIntegral $
       Set.size
-        ( (invSource (isoSource iso) Map.! s)
-            `Set.intersection` (invRange (isoSource iso) Map.! r)
+        ( (invSource (isoRange iso) Map.! s)
+            `Set.intersection` (invRange (isoRange iso) Map.! r)
         )
     where
       s = Vertex i
       r = Vertex j
 
-  rowMove _p _q _iso =
-    IsoToCorner
-      { isoSource = undefined,
-        isoRange = undefined,
-        isoMap = undefined
-      }
+  rowMove r s iso =
+    iso
+      `composeIso` CornerIso
+        { isoSource = isoRange iso,
+          isoProjection = Pure 1,
+          isoRange = newGraph,
+          isoMap = starMap (isoSource iso) vertMap edgeMap,
+          isoInverseMap = starMap newGraph invVertMap invEdgeMap
+        }
+    where
+      moveEdge =
+        Set.findMin
+          ( edgesBetween
+              (isoRange iso)
+              (Set.elemAt (fromIntegral s) (vertices (isoRange iso)))
+              (Set.elemAt (fromIntegral r) (vertices (isoRange iso)))
+          )
+      outgoing =
+        Set.toList
+          ( invSource (isoRange iso)
+              Map.! Set.elemAt (fromIntegral r) (vertices (isoRange iso))
+          )
 
-  rowUnmove _p _q _iso =
-    IsoToCorner
-      { isoSource = undefined,
-        isoRange = undefined,
-        isoMap = undefined
-      }
+      newEdges = Map.fromList (zip outgoing (freshEdges (isoRange iso)))
+      invNewEdges = Map.fromList [(v, k) | (k, v) <- Map.toList newEdges]
 
-  columnMove _p _q _iso =
-    IsoToCorner
-      { isoSource = undefined,
-        isoRange = undefined,
-        isoMap = undefined
-      }
+      newGraph =
+        foldl'
+          ( \g (f, e') ->
+              insEdge
+                (Set.elemAt (fromIntegral s) (vertices (isoRange iso)))
+                e'
+                (range (isoRange iso) Map.! f)
+                g
+          )
+          (delEdge moveEdge (isoRange iso))
+          (Map.toList newEdges)
 
-  columnUnmove _p _q _iso =
-    IsoToCorner
-      { isoSource = undefined,
-        isoRange = undefined,
-        isoMap = undefined
-      }
+      vertMap v = vertex newGraph v
+      edgeMap e
+        | e == moveEdge =
+          sum
+            [ edge newGraph e' * starEdge newGraph f
+              | (f, e') <- Map.toList newEdges
+            ]
+        | otherwise = edge newGraph e
 
-instance FlowEquiv IsoToCorner where
-  splitTopCorner _iso =
-    IsoToCorner
-    { isoSource = undefined,
-      isoRange = undefined,
-      isoMap = undefined
-    }
+      invVertMap v = vertex (isoSource iso) v
+      invEdgeMap e
+        | e `Map.member` invNewEdges =
+          edge (isoSource iso) moveEdge
+            * edge (isoSource iso) (invNewEdges Map.! e)
+        | otherwise = edge (isoSource iso) e
 
-  deleteSource _p _iso =
-    IsoToCorner
-    { isoSource = undefined,
-      isoRange = undefined,
-      isoMap = undefined
-    }
+  rowUnmove _p _q iso =
+    iso
+      `composeIso` CornerIso
+        { isoSource = undefined,
+          isoProjection = undefined,
+          isoRange = undefined,
+          isoMap = undefined,
+          isoInverseMap = undefined
+        }
+
+  columnMove _p _q iso =
+    iso
+      `composeIso` CornerIso
+        { isoSource = undefined,
+          isoProjection = undefined,
+          isoRange = undefined,
+          isoMap = undefined,
+          isoInverseMap = undefined
+        }
+
+  columnUnmove _p _q iso =
+    iso
+      `composeIso` CornerIso
+        { isoSource = undefined,
+          isoProjection = undefined,
+          isoRange = undefined,
+          isoMap = undefined,
+          isoInverseMap = undefined
+        }
+
+instance FlowEquiv CornerIso where
+  splitTopCorner iso =
+    iso
+      `composeIso` CornerIso
+        { isoSource = undefined,
+          isoProjection = undefined,
+          isoRange = undefined,
+          isoMap = undefined,
+          isoInverseMap = undefined
+        }
+
+  deleteSource _p iso =
+    iso
+      `composeIso` CornerIso
+        { isoSource = undefined,
+          isoProjection = undefined,
+          isoRange = undefined,
+          isoMap = undefined,
+          isoInverseMap = undefined
+        }
