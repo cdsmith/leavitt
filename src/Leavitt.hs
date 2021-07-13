@@ -77,15 +77,17 @@ newtype Leavitt k = Leavitt {leavittCoeffs :: Map (Path, Path) k}
   deriving (Eq, Ord, Show)
 
 instance (Eq k, Num k, Render k) => Render (Leavitt k) where
-  render (Leavitt m) =
-    intercalate
-      " + "
-      [ unwords $
-          [render lambda | lambda /= 1]
-            ++ [render alpha | pathLen alpha > 0 || pathLen beta == 0]
-            ++ [w ++ "^\\ast" | pathLen beta > 0, w <- words (render beta)]
-        | ((alpha, beta), lambda) <- Map.toAscList m
-      ]
+  render (Leavitt m)
+    | Map.null m = "0"
+    | otherwise =
+      intercalate
+        " + "
+        [ unwords $
+            [render lambda | lambda /= 1]
+              ++ [render alpha | pathLen alpha > 0 || pathLen beta == 0]
+              ++ [w ++ "^\\ast" | pathLen beta > 0, w <- words (render beta)]
+          | ((alpha, beta), lambda) <- Map.toAscList m
+        ]
 
 instance (Eq k, Num k) => StructuredAlgebra Graph k (Leavitt k) where
   scale g k (Leavitt m) = normalize g $ Leavitt (Map.map (* k) m)
