@@ -107,7 +107,7 @@ instance (Eq k, Num k) => StructuredAlgebra Graph k (Leavitt k) where
   times g (Leavitt m1) (Leavitt m2) =
     normalize g $
       Leavitt
-        ( Map.fromList
+        ( Map.fromListWith (+)
             [ case timesTerm g t1 t2 of
                 Just t -> (t, k1 * k2)
                 Nothing -> (t1, 0)
@@ -171,23 +171,17 @@ normalizeAtLen g len (Leavitt m) =
 
 type LPA k = StructuredTerm Graph k (Leavitt k)
 
-edge :: Num k => Graph -> Edge -> LPA k
-edge g e =
-  WithStructure g $
-    Leavitt
-      (Map.singleton (Path (Right [e]), Path (Left (range g Map.! e))) 1)
-
-starEdge :: Num k => Graph -> Edge -> LPA k
-starEdge g e =
-  WithStructure g $
-    Leavitt
-      (Map.singleton (Path (Left (range g Map.! e)), Path (Right [e])) 1)
-
 vertex :: Num k => Graph -> Vertex -> LPA k
 vertex g v =
   WithStructure g $
     Leavitt
       (Map.singleton (Path (Left v), Path (Left v)) 1)
+
+edge :: Num k => Graph -> Edge -> LPA k
+edge g e =
+  WithStructure g $
+    Leavitt
+      (Map.singleton (Path (Right [e]), Path (Left (range g Map.! e))) 1)
 
 star :: LPA k -> LPA k
 star = fmap (\(Leavitt m) -> Leavitt (Map.mapKeys swap m))

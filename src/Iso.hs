@@ -60,7 +60,7 @@ instance Reducible CornerIso where
         { isoSource = isoRange iso,
           isoProjection = Pure 1,
           isoRange = newGraph,
-          isoMap = starMap (isoSource iso) vertMap edgeMap,
+          isoMap = starMap (isoRange iso) vertMap edgeMap,
           isoInverseMap = starMap newGraph invVertMap invEdgeMap
         }
     where
@@ -96,7 +96,7 @@ instance Reducible CornerIso where
       edgeMap e
         | e == moveEdge =
           sum
-            [ edge newGraph e' * starEdge newGraph f
+            [ edge newGraph e' * star (edge newGraph f)
               | (f, e') <- Map.toList newEdges
             ]
         | otherwise = edge newGraph e
