@@ -9,7 +9,7 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Numeric.Natural (Natural)
-import Reduction (Matrix, Reducible (..))
+import Reduction (FlowEquiv (..), Matrix, Reducible (..))
 import Render (Render (..))
 
 newtype Vertex = Vertex Natural deriving (Eq, Ord, Enum, Show)
@@ -342,4 +342,9 @@ instance Reducible Graph where
                     (source g Map.! f)
                     (Set.elemAt (fromIntegral r) (vertices g))
                 )
-        in delEdge e' g
+         in delEdge e' g
+
+instance FlowEquiv Graph where
+  splitTopCorner = undefined
+
+  deleteSource p g = delVertex (Set.elemAt (fromIntegral p) (vertices g)) g
