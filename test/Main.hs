@@ -83,7 +83,7 @@ main = hspec $ do
         property $
           \(g :: Graph) ->
             let ck1Holds e f =
-                  starEdge g e * edge g f
+                  star (edge g e) * edge g f
                     == ( if e == f
                            then vertex g (range g Map.! e)
                            else 0 :: LPA Int
@@ -98,7 +98,7 @@ main = hspec $ do
         let g =
               insEdge (Vertex 0) (Edge 0) (Vertex 0) $
                 insEdge (Vertex 0) (Edge 1) (Vertex 0) empty
-        edge g (Edge 0) * starEdge g (Edge 0)
-          + edge g (Edge 1) * starEdge g (Edge 1)
+        edge g (Edge 0) * star (edge g (Edge 0))
+          + edge g (Edge 1) * star (edge g (Edge 1))
           `shouldBe` (vertex g (Vertex 0) :: LPA Int)
         return ()
