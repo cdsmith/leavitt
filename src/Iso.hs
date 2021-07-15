@@ -142,19 +142,32 @@ instance FlowEquiv CornerIso where
   splitTopCorner iso =
     iso
       `composeIso` CornerIso
-        { isoSource = undefined,
-          isoProjection = undefined,
-          isoRange = undefined,
-          isoMap = undefined,
-          isoInverseMap = undefined
+        { isoSource = isoRange iso,
+          isoProjection = Pure 1,
+          isoRange = newGraph,
+          isoMap = starMap (isoRange iso) vertMap edgeMap,
+          isoInverseMap = starMap newGraph invVertMap invEdgeMap
         }
+    where
+      newGraph = undefined
+      vertMap = undefined
+      edgeMap = undefined
+      invVertMap = undefined
+      invEdgeMap = undefined
 
-  deleteSource _p iso =
+  deleteSource p iso =
     iso
       `composeIso` CornerIso
-        { isoSource = undefined,
-          isoProjection = undefined,
-          isoRange = undefined,
-          isoMap = undefined,
-          isoInverseMap = undefined
+        { isoSource = isoRange iso,
+          isoProjection = 1 - vertex (isoRange iso) sourceVertex,
+          isoRange = newGraph,
+          isoMap = starMap (isoRange iso) vertMap edgeMap,
+          isoInverseMap = starMap newGraph invVertMap invEdgeMap
         }
+    where
+      sourceVertex = Set.elemAt (fromIntegral p) (vertices (isoRange iso))
+      newGraph = delVertex sourceVertex (isoRange iso)
+      vertMap = vertex newGraph
+      edgeMap = edge newGraph
+      invVertMap = vertex (isoRange iso)
+      invEdgeMap = edge (isoRange iso)
