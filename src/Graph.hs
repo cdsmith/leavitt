@@ -258,91 +258,55 @@ instance Reducible Graph where
 
   rowMove r s g0 =
     foldl'
-      ( \g (f, e') ->
-          insEdge
-            (Set.elemAt (fromIntegral s) (vertices g))
-            e'
-            (range g Map.! f)
-            g
-      )
-      (delEdge e g0)
-      (zip fs (freshEdges g0))
+      (\g (f, e') -> insEdge vs e' (range g Map.! f) g)
+      (delEdge moveEdge g0)
+      newEdges
     where
-      e =
-        Set.findMin
-          ( edgesBetween
-              g0
-              (Set.elemAt (fromIntegral s) (vertices g0))
-              (Set.elemAt (fromIntegral r) (vertices g0))
-          )
-      fs =
-        Set.toList
-          (invSource g0 Map.! Set.elemAt (fromIntegral r) (vertices g0))
+      vr = Set.elemAt (fromIntegral r) (vertices g0)
+      vs = Set.elemAt (fromIntegral s) (vertices g0)
+      moveEdge = Set.findMin (edgesBetween g0 vs vr)
+      outgoing = Set.toList (invSource g0 Map.! vr)
+      newEdges = zip outgoing (freshEdges g0)
 
   rowUnmove r s g0 =
-    insEdge
-      (Set.elemAt (fromIntegral s) (vertices g0))
-      e
-      (Set.elemAt (fromIntegral r) (vertices g0))
-      (foldl' removeEdge g0 fs)
+    insEdge vs unmoveEdge vr $
+      foldl'
+        ( \g f ->
+            delEdge (Set.findMax (edgesBetween g vs (range g Map.! f))) g
+        )
+        g0
+        outgoing
     where
-      e = head (freshEdges g0)
-      fs =
-        Set.toList
-          ( invSource g0
-              Map.! Set.elemAt (fromIntegral r) (vertices g0)
-          )
-      removeEdge g f =
-        let e' =
-              Set.findMax
-                ( edgesBetween
-                    g
-                    (Set.elemAt (fromIntegral s) (vertices g))
-                    (range g Map.! f)
-                )
-         in delEdge e' g
+      vr = Set.elemAt (fromIntegral r) (vertices g0)
+      vs = Set.elemAt (fromIntegral s) (vertices g0)
+      unmoveEdge = head (freshEdges g0)
+      outgoing = Set.toList (invSource g0 Map.! vr)
 
   columnMove s r g0 =
     foldl'
-      ( \g (f, e') ->
-          insEdge
-            (source g Map.! f)
-            e'
-            (Set.elemAt (fromIntegral r) (vertices g))
-            g
-      )
-      (delEdge e g0)
-      (zip fs (freshEdges g0))
+      (\g (f, e') -> insEdge (source g Map.! f) e' vr g)
+      (delEdge moveEdge g0)
+      newEdges
     where
-      e =
-        Set.findMin
-          ( edgesBetween
-              g0
-              (Set.elemAt (fromIntegral s) (vertices g0))
-              (Set.elemAt (fromIntegral r) (vertices g0))
-          )
-      fs =
-        Set.toList (invRange g0 Map.! Set.elemAt (fromIntegral s) (vertices g0))
+      vr = Set.elemAt (fromIntegral r) (vertices g0)
+      vs = Set.elemAt (fromIntegral s) (vertices g0)
+      moveEdge = Set.findMin (edgesBetween g0 vs vr)
+      incoming = Set.toList (invRange g0 Map.! vs)
+      newEdges = zip incoming (freshEdges g0)
 
   columnUnmove s r g0 =
-    insEdge
-      (Set.elemAt (fromIntegral s) (vertices g0))
-      e
-      (Set.elemAt (fromIntegral r) (vertices g0))
-      (foldl' removeEdge g0 fs)
+    insEdge vs unmoveEdge vr $
+      foldl'
+        ( \g f ->
+            delEdge (Set.findMax (edgesBetween g (source g Map.! f) vr)) g
+        )
+        g0
+        incoming
     where
-      e = head (freshEdges g0)
-      fs =
-        Set.toList (invRange g0 Map.! Set.elemAt (fromIntegral s) (vertices g0))
-      removeEdge g f =
-        let e' =
-              Set.findMax
-                ( edgesBetween
-                    g
-                    (source g Map.! f)
-                    (Set.elemAt (fromIntegral r) (vertices g))
-                )
-         in delEdge e' g
+      vr = Set.elemAt (fromIntegral r) (vertices g0)
+      vs = Set.elemAt (fromIntegral s) (vertices g0)
+      unmoveEdge = head (freshEdges g0)
+      incoming = Set.toList (invRange g0 Map.! vs)
 
 instance FlowEquiv Graph where
   splitTopCorner g0 =
