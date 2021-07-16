@@ -77,6 +77,59 @@ main = hspec $ do
               [0, 0, 0, 0, 0, 0, 0, 0, 3, 3]
             ]
 
+  describe "Graph" $ do
+    it "implements row move" $ do
+      let g =
+            insEdge (Vertex 0) (Edge 1) (Vertex 1) $
+              insEdge (Vertex 1) (Edge 2) (Vertex 0) $
+                insEdge (Vertex 1) (Edge 3) (Vertex 2) $
+                  insEdge (Vertex 2) (Edge 4) (Vertex 0) empty
+      toMatrix (rowMove 1 0 g) `shouldBe` rowMove 1 0 (toMatrix g)
+
+    it "implements row unmove" $ do
+      let g =
+            insEdge (Vertex 1) (Edge 2) (Vertex 0) $
+              insEdge (Vertex 1) (Edge 3) (Vertex 2) $
+                insEdge (Vertex 2) (Edge 4) (Vertex 0) $
+                  insEdge (Vertex 0) (Edge 5) (Vertex 0) $
+                    insEdge (Vertex 0) (Edge 6) (Vertex 2) empty
+      toMatrix (rowUnmove 1 0 g) `shouldBe` rowUnmove 1 0 (toMatrix g)
+
+    it "implements column move" $ do
+      let g =
+            insEdge (Vertex 0) (Edge 1) (Vertex 1) $
+              insEdge (Vertex 1) (Edge 2) (Vertex 0) $
+                insEdge (Vertex 1) (Edge 3) (Vertex 2) $
+                  insEdge (Vertex 2) (Edge 4) (Vertex 0) $
+                    insEdge (Vertex 0) (Edge 5) (Vertex 0) empty
+      toMatrix (columnMove 0 1 g) `shouldBe` columnMove 0 1 (toMatrix g)
+
+    it "implements column unmove" $ do
+      let g =
+            insEdge (Vertex 0) (Edge 1) (Vertex 1) $
+              insEdge (Vertex 1) (Edge 2) (Vertex 0) $
+                insEdge (Vertex 1) (Edge 3) (Vertex 2) $
+                  insEdge (Vertex 2) (Edge 4) (Vertex 1) $
+                    insEdge (Vertex 2) (Edge 5) (Vertex 0) $
+                      insEdge (Vertex 0) (Edge 6) (Vertex 0) $
+                        insEdge (Vertex 1) (Edge 7) (Vertex 1) empty
+      toMatrix (columnUnmove 0 1 g) `shouldBe` columnUnmove 0 1 (toMatrix g)
+
+    it "implements source deletion" $ do
+      let g =
+            insEdge (Vertex 0) (Edge 1) (Vertex 1) $
+              insEdge (Vertex 1) (Edge 2) (Vertex 1) $
+                insEdge (Vertex 1) (Edge 3) (Vertex 1) empty
+      toMatrix (deleteSource 0 g) `shouldBe` deleteSource 0 (toMatrix g)
+
+    it "implements splitTopCorner" $ do
+      let g =
+            insEdge (Vertex 0) (Edge 1) (Vertex 0) $
+              insEdge (Vertex 0) (Edge 2) (Vertex 0) $
+                insEdge (Vertex 0) (Edge 3) (Vertex 1) $
+                  insEdge (Vertex 1) (Edge 4) (Vertex 0) empty
+      toMatrix (splitTopCorner g) `shouldBe` splitTopCorner (toMatrix g)
+
   describe "Leavitt" $ do
     modifyMaxSuccess (const 10) $
       it "satisfies CK1" $
