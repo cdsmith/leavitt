@@ -345,6 +345,19 @@ instance Reducible Graph where
          in delEdge e' g
 
 instance FlowEquiv Graph where
-  splitTopCorner = undefined
+  splitTopCorner g0 =
+    foldl'
+      dupIncoming
+      (foldl' moveOutgoing (insVertex w g0) (Set.toList otherOutgoing))
+      (Map.toList newIncoming)
+    where
+      v = Set.elemAt 0 (vertices g0)
+      w = head (freshVertices g0)
+      loop = Set.findMin (edgesBetween g0 v v)
+      otherOutgoing = Set.delete loop (invSource g0 Map.! v)
+      incoming = invRange g0 Map.! v
+      newIncoming = Map.fromList (zip (Set.toList incoming) (freshEdges g0))
+      moveOutgoing g e = insEdge w e (range g Map.! e) (delEdge e g)
+      dupIncoming g (oldE, newE) = insEdge (source g Map.! oldE) newE w g
 
   deleteSource p g = delVertex (Set.elemAt (fromIntegral p) (vertices g)) g

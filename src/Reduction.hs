@@ -8,7 +8,7 @@ module Reduction where
 
 import Data.Coerce (coerce)
 import Data.Functor.Identity (Identity (Identity))
-import Data.List (foldl')
+import Data.List (foldl', (\\))
 import Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Data.Sequence as Seq
@@ -252,23 +252,20 @@ toMatrix m =
 
 instance FlowEquiv (Matrix Integer) where
   splitTopCorner m =
-    Vector.cons row1 (Vector.cons row2 (Vector.map dup (Vector.tail m)))
+    Vector.cons row1 (Vector.snoc (Vector.map dup (Vector.tail m)) row2)
     where
       n = m ! (0, 0)
       row1 =
         Vector.cons 0 $
-          Vector.cons 1 $
-            Vector.replicate (fromIntegral (size m) - 1) 0
-      row2 = Vector.cons n $ Vector.cons (n - 1) $ Vector.tail (m Vector.! 0)
+          Vector.snoc (Vector.replicate (fromIntegral (size m) - 1) 0) 1
+      row2 = Vector.cons n $ Vector.snoc (Vector.tail (m Vector.! 0)) (n - 1)
       dup v =
-        Vector.cons (v Vector.! 0) $ Vector.cons (v Vector.! 0) $ Vector.tail v
+        Vector.cons (v Vector.! 0) $ Vector.snoc (Vector.tail v) (v Vector.! 0)
 
   deleteSource p m =
     makeMatrix
-      [ [ m ! (if i < p then i else i + 1, if j < p then j else j + 1)
-          | j <- [0 .. size m - 1]
-        ]
-        | i <- [0 .. size m - 1]
+      [ [m ! (i, j) | j <- [0 .. size m - 1] \\ [p]]
+        | i <- [0 .. size m - 1] \\ [p]
       ]
 
 isIrreducible :: Reducible m => m -> Bool
