@@ -57,24 +57,25 @@ instance Reducible CornerIso where
   rowMove r s iso =
     iso
       `composeIso` CornerIso
-        { isoSource = isoRange iso,
+        { isoSource = g0,
           isoProjection = Pure 1,
           isoRange = newGraph,
-          isoMap = starMap (isoRange iso) vertMap edgeMap,
+          isoMap = starMap g0 vertMap edgeMap,
           isoInverseMap = starMap newGraph invVertMap invEdgeMap
         }
     where
-      vr = Set.elemAt (fromIntegral r) (vertices (isoRange iso))
-      vs = Set.elemAt (fromIntegral s) (vertices (isoRange iso))
-      moveEdge = Set.findMin (edgesBetween (isoRange iso) vs vr)
-      outgoing = Set.toList (invSource (isoRange iso) Map.! vr)
-      newEdges = zip outgoing (freshEdges (isoRange iso))
+      g0 = isoRange iso
+      vr = Set.elemAt (fromIntegral r) (vertices g0)
+      vs = Set.elemAt (fromIntegral s) (vertices g0)
+      moveEdge = Set.findMin (edgesBetween g0 vs vr)
+      outgoing = Set.toList (invSource g0 Map.! vr)
+      newEdges = zip outgoing (freshEdges g0)
       invNewEdges = Map.fromList [(v, k) | (k, v) <- newEdges]
 
       newGraph =
         foldl'
           (\g (f, e') -> insEdge vs e' (range g Map.! f) g)
-          (delEdge moveEdge (isoRange iso))
+          (delEdge moveEdge g0)
           newEdges
 
       vertMap v = vertex newGraph v
@@ -83,36 +84,49 @@ instance Reducible CornerIso where
           sum [edge newGraph e' * star (edge newGraph f) | (f, e') <- newEdges]
         | otherwise = edge newGraph e
 
-      invVertMap v = vertex (isoSource iso) v
+      invVertMap v = vertex g0 v
       invEdgeMap e
         | e `Map.member` invNewEdges =
-          edge (isoSource iso) moveEdge
-            * edge (isoSource iso) (invNewEdges Map.! e)
-        | otherwise = edge (isoSource iso) e
+          edge g0 moveEdge * edge g0 (invNewEdges Map.! e)
+        | otherwise = edge g0 e
 
   rowUnmove r s iso =
     iso
       `composeIso` CornerIso
-        { isoSource = isoRange iso,
+        { isoSource = g0,
           isoProjection = Pure 1,
           isoRange = newGraph,
-          isoMap = undefined,
-          isoInverseMap = undefined
+          isoMap = starMap g0 vertMap edgeMap,
+          isoInverseMap = starMap newGraph invVertMap invEdgeMap
         }
     where
-      vr = Set.elemAt (fromIntegral r) (vertices (isoRange iso))
-      vs = Set.elemAt (fromIntegral s) (vertices (isoRange iso))
-      unmoveEdge = head (freshEdges (isoRange iso))
-      outgoing = Set.toList (invSource (isoRange iso) Map.! vr)
+      g0 = isoRange iso
+      vr = Set.elemAt (fromIntegral r) (vertices g0)
+      vs = Set.elemAt (fromIntegral s) (vertices g0)
+      unmoveEdge = head (freshEdges g0)
+      outgoing =
+        Map.fromListWith (++) $
+          [(range g0 Map.! e, [e]) | e <- Set.toList (invSource g0 Map.! vr)]
+      oldEdges =
+          concatMap
+            (\v -> zip (outgoing Map.! v) (Set.toList (edgesBetween g0 vs v)))
+            (Map.keys outgoing)
+      invOldEdges = Map.fromList [(v, k) | (k, v) <- oldEdges]
 
       newGraph =
-        insEdge vs unmoveEdge vr $
-          foldl'
-            ( \g f ->
-                delEdge (Set.findMax (edgesBetween g vs (range g Map.! f))) g
-            )
-            (isoRange iso)
-            outgoing
+        insEdge vs unmoveEdge vr $ foldl' (flip delEdge) g0 (map snd oldEdges)
+
+      vertMap v = vertex newGraph v
+      edgeMap e
+        | e `Map.member` invOldEdges =
+          edge g0 unmoveEdge * edge g0 (invOldEdges Map.! e)
+        | otherwise = edge g0 e
+
+      invVertMap v = vertex g0 v
+      invEdgeMap e
+        | e == unmoveEdge =
+          sum [edge newGraph e' * star (edge newGraph f) | (f, e') <- oldEdges]
+        | otherwise = edge newGraph e
 
   columnMove _p _q iso =
     iso
