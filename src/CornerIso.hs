@@ -1,4 +1,4 @@
-module Iso where
+module CornerIso where
 
 import Data.Foldable (foldl')
 import qualified Data.Map as Map

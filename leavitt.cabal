@@ -6,10 +6,10 @@ author:             Chris Smith
 maintainer:         cdsmith@gmail.com
 
 library
-    exposed-modules:  FranksNormalForm,
+    exposed-modules:  CornerIso,
+                      FranksNormalForm,
                       Graph,
                       History,
-                      Iso,
                       Leavitt,
                       Reduction,
                       Render,
